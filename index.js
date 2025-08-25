@@ -18,6 +18,9 @@ import notificationRoutes from './routes/notificationRoutes.js';
 import verificationRoutes from './routes/verificationRoutes.js';
 import adminVerificationRoutes from './routes/adminVerificationRoutes.js';
 
+// Upload route (Cloudinary)
+import uploadRoutes from './routes/uploadRoutes.js';
+
 // Optional aliases for /api/auth/*
 import { registerUser, loginUser } from './controllers/userController.js';
 
@@ -28,9 +31,6 @@ const app = express();
 // Database connection
 connectDB();
 
-/* ------------------------------------------------------------------ */
-/*                           CORS configuration                        */
-/* ------------------------------------------------------------------ */
 // Put your Netlify site URL in Render env as CLIENT_URL (or NETLIFY_URL).
 // Example: https://lively-crumble-30443e.netlify.app
 const allowedOrigins = [
@@ -84,6 +84,9 @@ app.use('/api/notifications', notificationRoutes);
 // Verification routes (employer + admin)
 app.use('/api/verification', verificationRoutes);
 app.use('/api/admin/verification', adminVerificationRoutes);
+
+// Upload route (multipart/form-data -> Cloudinary)
+app.use('/api/upload', uploadRoutes);
 
 // Helper aliases (if your authRoutes already define these, this is harmless)
 app.post('/api/auth/register', registerUser);
