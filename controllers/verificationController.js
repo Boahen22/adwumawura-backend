@@ -39,6 +39,7 @@ export async function getMyVerification(req, res) {
         note: '',
         submittedAt: null,
         updatedAt: null,
+        documentUrl: '', // present but empty when none
       });
     }
 
@@ -49,6 +50,7 @@ export async function getMyVerification(req, res) {
       note: v.note || '',
       submittedAt: v.submittedAt,
       updatedAt: v.updatedAt,
+      documentUrl: v.documentUrl || '', // include if your schema stores it
     });
   } catch (e) {
     console.error('getMyVerification error:', e);
@@ -64,6 +66,10 @@ export async function uploadMyVerification(req, res) {
       return res.status(400).json({ message: 'No file uploaded.' });
     }
 
+    // Optional: support a URL captured from the Cloudinary-backed /api/upload
+    const documentUrl =
+      (req.body && (req.body.documentUrl || req.body.url || req.body.secure_url)) || '';
+
     const meta = {
       employer: req.user._id,
       status: 'pending',
@@ -73,10 +79,13 @@ export async function uploadMyVerification(req, res) {
       mimeType: file.mimetype,
       size: file.size,
       submittedAt: new Date(),
+      updatedAt: new Date(),
+      ...(documentUrl ? { documentUrl } : {}), // saved if your schema supports it
     };
 
     const existing = await EmployerVerification.findOne({ employer: req.user._id });
     if (existing) {
+      // Clean up previously stored local file if it exists
       if (existing.filePath && fs.existsSync(existing.filePath)) {
         try {
           fs.unlinkSync(existing.filePath);
@@ -90,6 +99,7 @@ export async function uploadMyVerification(req, res) {
 
     await applyStatusToUser(req.user._id, 'pending');
 
+    // Notify the employer (best-effort)
     try {
       await Notification.create({
         recipient: req.user._id,
@@ -162,6 +172,7 @@ export async function adminListVerifications(req, res) {
           email: v.employerDoc.email || '',
         },
         file: { name: v.originalName, mime: v.mimeType, size: v.size },
+        documentUrl: v.documentUrl || '',
       })),
       page: Number(page),
       pageSize: Number(pageSize),
@@ -196,6 +207,7 @@ export async function adminGetVerification(req, res) {
         verificationStatus: v.employer.verificationStatus || mapToUserStatus(v.status),
       },
       file: { name: v.originalName, mime: v.mimeType, size: v.size },
+      documentUrl: v.documentUrl || '',
     });
   } catch (e) {
     console.error('adminGetVerification error:', e);
@@ -237,6 +249,7 @@ export async function adminUpdateStatus(req, res) {
 
     v.status = status;
     v.note = note;
+    v.updatedAt = new Date();
     await v.save();
 
     await applyStatusToUser(v.employer, status);
