@@ -28,16 +28,37 @@ const app = express();
 // Database connection
 connectDB();
 
-// CORS configuration
-const CLIENT_URL = process.env.CLIENT_URL || 'http://localhost:5173';
+/* ------------------------------------------------------------------ */
+/*                           CORS configuration                        */
+/* ------------------------------------------------------------------ */
+// Put your Netlify site URL in Render env as CLIENT_URL (or NETLIFY_URL).
+// Example: https://lively-crumble-30443e.netlify.app
+const allowedOrigins = [
+  process.env.CLIENT_URL,
+  process.env.NETLIFY_URL,
+  'http://localhost:5173',
+  'http://localhost:3000',
+].filter(Boolean);
+
 app.use(
   cors({
-    origin: [CLIENT_URL, 'http://localhost:5173', 'http://localhost:3000'],
-    credentials: true,
+    origin(origin, cb) {
+      // allow non-browser clients (no Origin header), e.g. curl/Postman
+      if (!origin) return cb(null, true);
+      if (allowedOrigins.includes(origin)) return cb(null, true);
+      return cb(new Error('Not allowed by CORS'));
+    },
     methods: ['GET', 'POST', 'PATCH', 'PUT', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization'],
+    credentials: true,
+    maxAge: 86400, // cache preflight for a day
   })
 );
+
+// Make sure preflight requests are handled
+app.options('*', cors());
+
+/* ------------------------------------------------------------------ */
 
 // JSON parser (safe with multer; multipart bypasses this)
 app.use(express.json());
